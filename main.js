@@ -21,7 +21,7 @@ controls.enableDamping = true;
 function allEventListenerHandles() {
   document
     .getElementById("btn1")
-    .addEventListener("click", () => loadProject(clicking));
+    .addEventListener("click", () => loadProject(fun1));
   document
     .getElementById("btn2")
     .addEventListener("click", () => loadProject(fun2));
@@ -85,7 +85,905 @@ function animate(updateFn) {
 
 // Project Functions Start Here
 
-//#region  Project 2:
+//#region  Project clicking
+function fun1() {
+  //#region Raycast
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+  const polygonVertices = [];
+  const vectorAngles = [];
+  const vertexAngles = [];
+  const extrudeStartPoints = [];
+  const extrudeEndPoints = [];
+  const cuttingLines = [];
+  const extrudeDirectionsByEdge = [];
+  const extrusionHeight = 10;
+
+  const planeGeometry = new THREE.PlaneGeometry(500, 500);
+  const planeMaterial = new THREE.MeshBasicMaterial({
+    visible: false,
+    color: "white",
+  });
+  const directionalTop = new THREE.DirectionalLight(0xffffff, 1);
+  directionalTop.position.set(0, 50, 0);
+  scene.add(directionalTop);
+
+  const directionalDown = new THREE.DirectionalLight(0xffffff, 1);
+  directionalDown.position.set(0, -20, -50);
+  scene.add(directionalDown);
+
+  const directionalRight = new THREE.DirectionalLight(0xffffff, 1);
+  directionalRight.position.set(50, 0, 50);
+  scene.add(directionalRight);
+
+  const directionalLight4 = new THREE.DirectionalLight(0xffffff, 1);
+  directionalLight4.position.set(-50, 0, 0);
+  scene.add(directionalLight4);
+  const drawingPlane = new THREE.Mesh(planeGeometry, planeMaterial);
+  // drawingPlane.scale.set(0.1, 0.1, 0.1);
+  drawingPlane.position.set(0, 0, 5);
+  scene.add(drawingPlane);
+  //#endregion
+
+  function drawCircleAt(point) {
+    const circle = new THREE.Mesh(
+      new THREE.CircleGeometry(1),
+      new THREE.MeshBasicMaterial({ color: 0xff0000 })
+    );
+    circle.position.copy(point);
+    scene.add(circle);
+  }
+
+  function extrudeFaceBetween(startPoint, endPoint) {
+    const shape = new THREE.Shape();
+    const depth = 0;
+    const height = extrusionHeight;
+    shape.moveTo(0, 0);
+    shape.lineTo(depth, 0);
+    shape.lineTo(depth, height);
+    shape.lineTo(0, height);
+    shape.lineTo(0, 0);
+
+    const path = new THREE.LineCurve3(startPoint, endPoint);
+    const extrudeSettings = {
+      steps: 1,
+      bevelEnabled: false,
+      extrudePath: path,
+    };
+
+    const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    const material = new THREE.MeshPhysicalMaterial({ color: "#e4e6e8" });
+    const mesh = new THREE.Mesh(geometry, material);
+
+    const direction = new THREE.Vector3().subVectors(endPoint, startPoint);
+    let dominantAxis;
+    if (Math.abs(direction.x) > Math.abs(direction.y)) {
+      dominantAxis = direction.x > 0 ? "x" : "-x";
+    } else if (Math.abs(direction.y) > Math.abs(direction.x)) {
+      dominantAxis = direction.y > 0 ? "y" : "-y";
+    }
+
+    extrudeDirectionsByEdge.push(dominantAxis);
+
+    const positionAttribute = geometry.attributes.position;
+    const uniqueVerticesSet = new Set();
+    const uniqueVertices = [];
+    for (let i = 0; i < positionAttribute.count; i++) {
+      const x = positionAttribute.getX(i);
+      const y = positionAttribute.getY(i);
+      const z = positionAttribute.getZ(i);
+      const vertex = JSON.stringify([x, y, z]);
+      if (!uniqueVerticesSet.has(vertex)) {
+        uniqueVerticesSet.add(vertex);
+        uniqueVertices.push([x, y, z]);
+      }
+    }
+
+    extrudeStartPoints.push(uniqueVertices[2]);
+    extrudeEndPoints.push(uniqueVertices[0]);
+
+    scene.add(mesh);
+  }
+
+  function calculateAngles() {
+    if (polygonVertices.length < 3) return;
+    for (let i = 1; i < polygonVertices.length; i++) {
+      if (i == polygonVertices.length - 1) {
+        polygonVertices[0] = polygonVertices[1];
+      }
+      const prevVertex =
+        polygonVertices[
+        (i - 1 + polygonVertices.length) % polygonVertices.length
+        ];
+      const currentVertex = polygonVertices[i];
+      const nextVertex = polygonVertices[(i + 1) % polygonVertices.length];
+
+      // This is the point where the angle is calculated using th side of the rectangle shape
+      const pointLeft = new THREE.Vector3(...extrudeStartPoints[i - 1]);
+      const commonPoint = new THREE.Vector3(...polygonVertices[i]);
+      const pointRight = new THREE.Vector3(
+        ...extrudeEndPoints[i % extrudeEndPoints.length]
+      );
+      // drawCircleAt(pointLeft);
+      // drawCircleAt(pointRight);
+      // drawCircleAt(commonPoint);
+      const vectorAvertexAngle = new THREE.Vector3().subVectors(
+        pointLeft,
+        commonPoint
+      );
+      const vectorBvertexAngle = new THREE.Vector3().subVectors(
+        pointRight,
+        commonPoint
+      );
+      const vertexAngle = vectorAvertexAngle.angleTo(vectorBvertexAngle);
+      vertexAngles.push(vertexAngle);
+      // Ends here
+
+      const vectorA = new THREE.Vector3().subVectors(prevVertex, currentVertex);
+      const vectorB = new THREE.Vector3().subVectors(nextVertex, currentVertex);
+      const angle = vectorA.angleTo(vectorB);
+      vectorAngles.push(angle);
+      console.log(prevVertex, currentVertex, nextVertex);
+
+      const canvas = document.createElement("canvas");
+      canvas.width = 128;
+      canvas.height = 64;
+      const context = canvas.getContext("2d");
+      context.fillStyle = "rgb(255, 255, 255)";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.font = "24px Arial";
+      context.fillStyle = "white";
+      context.textAlign = "center";
+      context.fillText(
+        (vertexAngle * (180 / Math.PI)).toFixed(1) + "°",
+        canvas.width / 2,
+        canvas.height / 2 + 8
+      );
+
+      const texture = new THREE.CanvasTexture(canvas);
+      const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+      const sprite = new THREE.Sprite(spriteMaterial);
+      sprite.position.copy(currentVertex);
+      sprite.scale.set(0.5, 0.25, 1);
+      sprite.userData.isAngleLabel = true;
+      // scene.add(sprite);
+
+      const bisector = new THREE.Vector3()
+        .addVectors(vectorA.normalize(), vectorB.normalize())
+        .normalize();
+
+      const arrowLength = extrusionHeight * 1.2;
+      const arrowColor = 0xffffff;
+      const arrowEnd = new THREE.Vector3().addVectors(
+        currentVertex,
+        bisector.multiplyScalar(arrowLength)
+      );
+      cuttingLines.push(arrowEnd);
+      const arrowLineGeometry = new THREE.BufferGeometry().setFromPoints([
+        currentVertex,
+        arrowEnd,
+      ]);
+      const arrowLineMaterial = new THREE.LineBasicMaterial({
+        color: arrowColor,
+      });
+      const arrowLine = new THREE.Line(arrowLineGeometry, arrowLineMaterial);
+      scene.add(arrowLine);
+    }
+  }
+
+  function findExtrudePath() {
+    for (let i = 0; i < polygonVertices.length - 1; i++) {
+      extrudeFaceBetween(polygonVertices[i], polygonVertices[i + 1]);
+    }
+  }
+
+  function stepFinal() {
+    vectorAngles.forEach((angle) => {
+      console.log(angle * (180 / Math.PI));
+    });
+    vertexAngles.forEach((angle) => {
+      console.log(angle * (180 / Math.PI));
+    });
+
+    let faceIndex = 0;
+    scene.traverse((child) => {
+      if (child.isMesh && child.geometry instanceof THREE.ExtrudeGeometry) {
+        const geometry = child.geometry;
+        const positionAttribute = geometry.attributes.position;
+        for (let i = 0; i < positionAttribute.count; i++) {
+          const x = positionAttribute.getX(i);
+          const y = positionAttribute.getY(i);
+          const z = positionAttribute.getZ(i);
+
+          const start = extrudeStartPoints[faceIndex];
+          const end = extrudeEndPoints[faceIndex];
+          if (x === start[0] && y === start[1] && z === start[2]) {
+            positionAttribute.setXYZ(
+              i,
+              cuttingLines[faceIndex].x,
+              cuttingLines[faceIndex].y,
+              z
+            );
+          }
+
+          if (x === end[0] && y === end[1] && z === end[2]) {
+            positionAttribute.setXYZ(
+              i,
+              cuttingLines[
+                (cuttingLines.length - 1 + faceIndex) % cuttingLines.length
+              ].x,
+              cuttingLines[
+                (cuttingLines.length - 1 + faceIndex) % cuttingLines.length
+              ].y,
+              z
+            );
+          }
+        }
+        faceIndex++;
+      }
+    });
+
+    // console.log(extrudeStartPoints);
+  }
+  let isToStop = false;
+  function ch() {
+    function onClick(event) {
+      console.log("clicked");
+
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObject(drawingPlane);
+
+      if (intersects.length > 0) {
+        const clickedPoint = intersects[0].point;
+        const clickedVec = new THREE.Vector3(clickedPoint.x, clickedPoint.y, 5);
+        polygonVertices.push(clickedVec);
+
+        // Check if the shape is closed (clicked near the first point)
+        const firstPoint = polygonVertices[0];
+        console.log(polygonVertices, clickedPoint);
+
+        const isClosed =
+          polygonVertices.length > 1 &&
+          parseFloat(clickedPoint.x.toFixed(0)) ===
+          parseFloat(polygonVertices[0].x.toFixed(0)) &&
+          parseFloat(clickedPoint.y.toFixed(0)) ===
+          parseFloat(polygonVertices[0].y.toFixed(0)) &&
+          parseFloat(clickedPoint.z.toFixed(0)) ===
+          parseFloat(polygonVertices[0].z.toFixed(0));
+
+          console.log(isClosed);
+          
+
+        if (isClosed) {
+          isToStop = true;
+          console.log("Got the starting point. Polygon closed.");
+          polygonVertices[polygonVertices.length - 1] = firstPoint.clone(); // ensure closure
+
+          findExtrudePath();
+          calculateAngles();
+          stepFinal();
+        }
+
+        if (!isToStop) {
+          drawCircleAt(clickedVec);
+        }
+      }
+
+      animate(() => { });
+    }
+    window.addEventListener("click", onClick);
+  }
+
+  setTimeout(ch, 100);
+
+
+}
+//#endregion
+
+//#region Function 2
+function fun2() {
+  camera.position.set(0, 0, 700);
+  const directionalTop = new THREE.DirectionalLight(0xffffff, 1);
+  directionalTop.position.set(0, 50, 0);
+  scene.add(directionalTop);
+
+  const directionalDown = new THREE.DirectionalLight(0xffffff, 1);
+  directionalDown.position.set(0, -20, -50);
+  scene.add(directionalDown);
+
+  const directionalRight = new THREE.DirectionalLight(0xffffff, 1);
+  directionalRight.position.set(50, 0, 50);
+  scene.add(directionalRight);
+
+  const directionalLight4 = new THREE.DirectionalLight(0xffffff, 1);
+  directionalLight4.position.set(-50, 0, 0);
+  scene.add(directionalLight4);
+  const origin = new THREE.Vector2(0, 0);
+  let doorHeight = 200,
+    doorWidth = 300,
+    holeDiameter = 50,
+    handleHeight = 50,
+    handleWidth = 100;
+
+  // Handle height calculation
+  if (handleHeight < 20) {
+    handleHeight = 20;
+  }
+  if (handleHeight > doorHeight) {
+    handleHeight = doorHeight;
+  }
+  if (holeDiameter + 20 > handleHeight) {
+    holeDiameter = handleHeight - 20;
+  }
+  doorHeight = Math.max(doorHeight, 2 * holeDiameter + 40);
+  // Extrusion
+  const shapeDeep = 10;
+  const extrudeSetting = {
+    depth: shapeDeep,
+  };
+
+  // Door formation
+  const doorShape = new THREE.Shape();
+  doorShape.moveTo(origin.x + 10, origin.y);
+  doorShape.lineTo(origin.x + doorWidth - 10, origin.y);
+  doorShape.quadraticCurveTo(
+    origin.x + doorWidth,
+    origin.y,
+    origin.x + doorWidth,
+    origin.y + 10
+  );
+  doorShape.lineTo(origin.x + doorWidth, origin.y + doorHeight - 10);
+  doorShape.quadraticCurveTo(
+    origin.x + doorWidth,
+    origin.y + doorHeight,
+    origin.x + doorWidth - 10,
+    origin.y + doorHeight
+  );
+  doorShape.lineTo(origin.x + 10, origin.y + doorHeight);
+  doorShape.quadraticCurveTo(
+    origin.x,
+    origin.y + doorHeight,
+    origin.x,
+    origin.y + doorHeight - 10
+  );
+  doorShape.lineTo(origin.x, origin.y + 10);
+  doorShape.quadraticCurveTo(origin.x, origin.y, origin.x + 10, origin.y);
+
+  const doorHoles = [
+    { x: origin.x + holeDiameter, y: origin.y + doorHeight - holeDiameter },
+    // { x: origin.x + holeDiameter / 2 + 5, y: origin.y + doorHeight / 2 },
+    {
+      x: origin.x - holeDiameter / 2 - 5 + doorWidth,
+      y: origin.y + doorHeight / 2,
+    },
+    { x: origin.x + doorWidth / 2, y: origin.y + holeDiameter - 10 },
+    //     { x: origin.x + doorWidth / 2, y: origin.y + doorHeight - holeDiameter + 10 },
+  ];
+  doorHoles.forEach((hole) => {
+    const doorHole = new THREE.Path();
+    doorHole.absarc(hole.x, hole.y, holeDiameter / 2, 0, Math.PI * 2, true);
+    doorShape.holes.push(doorHole);
+  });
+
+  // Door Extrusion
+  const door = new THREE.ExtrudeGeometry(doorShape, extrudeSetting);
+  const doormat = new THREE.MeshPhysicalMaterial({ color: "#e4e6e8" });
+  const doorMesh = new THREE.Mesh(door, doormat);
+  scene.add(doorMesh);
+
+  // handle Formaton
+  let handle = new THREE.Shape();
+  // handle.moveTo(origin.x , origin.y)
+  handle.lineTo(handleHeight / 2 - 5, 0);
+  handle.quadraticCurveTo(handleHeight / 2, 0, handleHeight / 2, 5);
+  handle.lineTo(handleHeight / 2, handleWidth - 5);
+  handle.quadraticCurveTo(
+    handleHeight / 2,
+    handleWidth,
+    handleHeight / 2 - 5,
+    handleWidth
+  );
+  handle.lineTo(-handleHeight / 2 + 5, handleWidth);
+  handle.quadraticCurveTo(
+    -handleHeight / 2,
+    handleWidth,
+    -handleHeight / 2,
+    handleWidth - 5
+  );
+  handle.lineTo(-handleHeight / 2, 5);
+  handle.quadraticCurveTo(-handleHeight / 2, 0, -handleHeight / 2 + 5, 0);
+
+  // Handle Hole
+  const HandleHole = new THREE.Path();
+  // HandleHole.absarc(0, 0 + holeDiameter / 2, holeDiameter / 2, 0, Math.PI * 2, true);
+  HandleHole.absarc(
+    0,
+    holeDiameter / 2 + 5,
+    holeDiameter / 2,
+    0,
+    Math.PI * 2,
+    true
+  );
+  handle.holes.push(HandleHole);
+
+  //  Diagonal Handle
+  const handles = new THREE.ExtrudeGeometry(handle, { depth: 20 });
+  const handleMesh = new THREE.MeshPhysicalMaterial({ color: "#e4e6e8" });
+  const handlesrMeshDiagonal = new THREE.Mesh(handles, handleMesh);
+  handlesrMeshDiagonal.position.set(
+    origin.x + holeDiameter + 14,
+    origin.y + doorHeight - holeDiameter - 14,
+    shapeDeep
+  );
+  handlesrMeshDiagonal.rotateZ(Math.PI / 4);
+  scene.add(handlesrMeshDiagonal);
+
+  // clone Handle
+
+  //  Handle DOWN
+  const handleDown = handles.clone();
+  const handleDownMat = new THREE.MeshPhysicalMaterial({ color: "#e4e6e8" });
+  const handleDownMatMesh = new THREE.Mesh(handleDown, handleDownMat);
+  handleDownMatMesh.position.set(
+    origin.x + doorWidth / 2,
+    origin.y + holeDiameter + 10,
+    shapeDeep * 2
+  );
+  handleDown.rotateX(Math.PI);
+  scene.add(handleDownMatMesh);
+
+  // Handle RIGHT
+  const handleRight = handles.clone();
+  const handleRightMat = new THREE.MeshPhysicalMaterial({ color: "#e4e6e8" });
+  const handleRightMatMesh = new THREE.Mesh(handleRight, handleRightMat);
+  handleRightMatMesh.position.set(
+    origin.x + doorWidth - holeDiameter - 10,
+    origin.y + doorHeight / 2,
+    shapeDeep
+  );
+  handleRightMatMesh.rotateZ(-Math.PI / 2);
+  scene.add(handleRightMatMesh);
+
+  // Edge line for handle geometry
+  const handleEdgeo = new THREE.EdgesGeometry(handles);
+  const handleEdmat = new THREE.LineBasicMaterial({ color: "white" });
+  const handleEdges = new THREE.LineSegments(handleEdgeo, handleEdmat);
+  // handlesrMeshDiagonal.add(handleEdges);
+
+  // Edge line for Door geometry
+  const doorEdgeo = new THREE.EdgesGeometry(door);
+  const doorEdmat = new THREE.LineBasicMaterial({ color: "white" });
+  const doorEdges = new THREE.LineSegments(doorEdgeo, doorEdmat);
+  scene.add(doorEdges);
+
+  animate(() => { });
+}
+//#endregion
+
+//#region  Project 3:
+
+function fun3() {
+  camera.position.set(-100, 0, -100);
+  const directional = new THREE.DirectionalLight(0xffffff, 3); // Soft white light
+  directional.position.set(0, 40, 0);
+  scene.add(directional);
+  const directional1 = new THREE.DirectionalLight(0xffffff, 1); // Soft white light
+  directional1.position.set(-40, 0, 0);
+  scene.add(directional1);
+
+  const ambientLight3 = new THREE.AmbientLight(0xffffff, 2);
+  scene.add(ambientLight3);
+
+  function RectangleShapeHeight() {
+    return 50;
+  }
+
+  // Width of Rectangular shape
+  function RectangularShapeWidth() {
+    return 30;
+  }
+
+  // Extrude Length of Rectangular shape
+  function rectangleExtrudeLength() {
+    return 300;
+  }
+
+  //#region Type - 3  Multiple slices
+
+  const leftLinePoints = [
+    new THREE.Vector3(0, 0, 0), // left line start coordinate
+    new THREE.Vector3(0, 50, 100), // left line end coordinate
+  ];
+
+  const rightLinePoints = [
+    new THREE.Vector3(0, 0, 200), // right line start coordinate
+    new THREE.Vector3(0, 51, 300), // right line end coordinate
+  ];
+
+  // Create a CatmullRomCurve3 curve
+  const leftCurve = new THREE.CatmullRomCurve3(leftLinePoints);
+  const rightCurve = new THREE.CatmullRomCurve3(rightLinePoints);
+
+  // Generate the Cut Line from the given Vertices
+  const leftCurvePoints = leftCurve.getPoints(100);
+  leftCurvePoints.forEach((v) => {
+    // top edge for end point
+    if (Math.round(v.y) == RectangleShapeHeight() && v.z >= 0) {
+      leftLinePoints[1].y = RectangleShapeHeight();
+      leftLinePoints[1].z = v.z;
+    }
+    // left edge for end point
+    if (Math.round(v.z) == 0) {
+      leftLinePoints[1].y = v.y;
+      leftLinePoints[1].z = 0;
+    }
+  });
+  leftCurvePoints.forEach((v) => {
+    // left edge for start point
+    if (Math.round(v.z) == 0 && leftLinePoints[1].y == RectangleShapeHeight()) {
+      leftLinePoints[0].y = v.y;
+      leftLinePoints[0].z = 0;
+    }
+    // down edge for start point
+    if (Math.round(v.y) == 0) {
+      leftLinePoints[0].y = 0;
+      leftLinePoints[0].z = v.z;
+    }
+  });
+
+  const rightCurvePoints = rightCurve.getPoints(100);
+  rightCurvePoints.forEach((v) => {
+    // top edge for end point
+    if (
+      Math.round(v.y) == RectangleShapeHeight() &&
+      v.z <= rectangleExtrudeLength()
+    ) {
+      rightLinePoints[1].y = RectangleShapeHeight();
+      rightLinePoints[1].z = v.z;
+    }
+    // right edge for end point
+    if (Math.round(v.z) == rectangleExtrudeLength()) {
+      rightLinePoints[1].y = v.y;
+      rightLinePoints[1].z = rectangleExtrudeLength();
+    }
+  });
+  rightCurvePoints.forEach((v) => {
+    // right edge for start point
+    if (
+      Math.round(v.z) == rectangleExtrudeLength() &&
+      rightLinePoints[1].y == RectangleShapeHeight()
+    ) {
+      // console.log(Math.round(v.x) , Math.round(v.y) , Math.round(v.z));
+      rightLinePoints[0].y = v.y;
+      rightLinePoints[0].z = rectangleExtrudeLength();
+    }
+    // down edge for start point
+    if (Math.round(v.y) == 0) {
+      // console.log(Math.round(v.x) , Math.round(v.y) , Math.round(v.z));
+      rightLinePoints[0].y = 0;
+      rightLinePoints[0].z = v.z;
+    }
+  });
+
+  const leftGeometry = new THREE.BufferGeometry().setFromPoints(
+    leftCurvePoints
+  );
+  const rightGeometry = new THREE.BufferGeometry().setFromPoints(
+    rightCurvePoints
+  );
+  // Create a material for the line
+  const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
+  // Create the line object
+  const rightLine = new THREE.Line(rightGeometry, material);
+  const leftLine = new THREE.Line(leftGeometry, material);
+
+  // Add the line to the scene
+  scene.add(leftLine);
+  scene.add(rightLine);
+  function HollowRectangleShape_Type3() {
+    const rectangleExtrudeShape = RectangleShape(RectangleShapeHeight() / 2);
+
+    // Extrude settings for rectangular shape
+    const extrudeLength = rectangleExtrudeLength();
+    const extrudeSettings = {
+      depth: rectangleExtrudeLength(),
+      steps: 1,
+      bevelEnabled: false,
+    };
+
+    // rectangular Geometry , material and Mesh
+    const rectangleTopExtrude = new THREE.ExtrudeGeometry(
+      rectangleExtrudeShape,
+      extrudeSettings
+    );
+    const rectangleTopMaterial = new THREE.MeshPhysicalMaterial({
+      color: "#a2afbd",
+      wireframe: false,
+    });
+    const rectangleTopMesh = new THREE.Mesh(
+      rectangleTopExtrude,
+      rectangleTopMaterial
+    );
+    RectangularShapeCalculation(rectangleTopExtrude, extrudeLength);
+    scene.add(rectangleTopMesh);
+
+    animate(() => { });
+  }
+  //#endregion
+
+  // Edge cutting calculation
+  function RectangularShapeCalculation(geometry, extrudeLength) {
+    // console.log("Left Line cutting vertices ", leftLinePoints[0], leftLinePoints[1]);
+    // console.log("Right Line cutting vertices ", rightLinePoints[0], rightLinePoints[1]);
+    const positionAttribute = geometry.attributes.position;
+
+    const leftStartCoordinate = leftLinePoints[0];
+    const leftEndCoordinate = leftLinePoints[1];
+
+    const rightStartCoordinate = rightLinePoints[0];
+    const rightEndCoordinate = rightLinePoints[1];
+
+    for (let i = 0; i < positionAttribute.count; i++) {
+      const x = positionAttribute.getX(i);
+      const y = positionAttribute.getY(i);
+      const z = positionAttribute.getZ(i);
+
+      // LEFT LINE CUTTING
+      if (
+        leftStartCoordinate.y <= 0 &&
+        leftStartCoordinate.z >= 0 &&
+        leftStartCoordinate.z < rightStartCoordinate.z
+      ) {
+        if (z == 0 && (y == 0 || y == RectangularShapeWidth() / 20)) {
+          if (y == 0)
+            positionAttribute.setXYZ(
+              i,
+              x,
+              leftStartCoordinate.y,
+              leftStartCoordinate.z
+            );
+          if (y == RectangularShapeWidth() / 20)
+            positionAttribute.setXYZ(
+              i,
+              x,
+              leftStartCoordinate.y + RectangularShapeWidth() / 20,
+              leftStartCoordinate.z + RectangularShapeWidth() / 20
+            );
+        }
+      }
+      if (leftEndCoordinate.y > 0 && leftEndCoordinate.z >= 0) {
+        if (y == RectangleShapeHeight() / 2 && z == 0) {
+          positionAttribute.setXYZ(
+            i,
+            x,
+            leftEndCoordinate.y,
+            leftEndCoordinate.z
+          );
+        }
+
+        if (leftEndCoordinate.z != 0) {
+          if (
+            z == 0 &&
+            (y == RectangleShapeHeight() ||
+              y == RectangleShapeHeight() - RectangularShapeWidth() / 20)
+          ) {
+            if (y == RectangleShapeHeight())
+              positionAttribute.setXYZ(
+                i,
+                x,
+                leftEndCoordinate.y,
+                leftEndCoordinate.z
+              );
+            if (y == RectangleShapeHeight() - RectangularShapeWidth() / 20)
+              positionAttribute.setXYZ(
+                i,
+                x,
+                leftEndCoordinate.y - RectangularShapeWidth() / 20,
+                leftEndCoordinate.z + RectangularShapeWidth() / 20
+              );
+          }
+        }
+      }
+      if (leftStartCoordinate.y > 0 && leftStartCoordinate.z == 0) {
+        if (y == RectangleShapeHeight() / 2 && z == 0) {
+          positionAttribute.setXYZ(
+            i,
+            x,
+            leftStartCoordinate.y,
+            leftStartCoordinate.z
+          );
+        }
+      }
+
+      // RIGHT LINE CUTTING
+
+      if (
+        rightStartCoordinate.y <= 0 &&
+        rightStartCoordinate.z <= rectangleExtrudeLength() &&
+        rightStartCoordinate.z > leftStartCoordinate.z
+      ) {
+        if (
+          z == rectangleExtrudeLength() &&
+          (y == 0 || y == RectangularShapeWidth() / 20)
+        ) {
+          positionAttribute.setXYZ(
+            i,
+            x,
+            rightStartCoordinate.y,
+            rightStartCoordinate.z
+          );
+        }
+        if (z == rectangleExtrudeLength() && y == RectangleShapeHeight() / 2) {
+          positionAttribute.setXYZ(
+            i,
+            x,
+            rightEndCoordinate.y,
+            rightEndCoordinate.z
+          );
+        }
+      }
+
+      if (
+        rightEndCoordinate.y >= RectangleShapeHeight() &&
+        rightEndCoordinate.z <= rectangleExtrudeLength() &&
+        rightEndCoordinate.z > leftEndCoordinate.z
+      ) {
+        if (
+          z == rectangleExtrudeLength() &&
+          (y == RectangleShapeHeight() ||
+            y == RectangleShapeHeight() - RectangularShapeWidth() / 20)
+        ) {
+          positionAttribute.setXYZ(
+            i,
+            x,
+            rightEndCoordinate.y,
+            rightEndCoordinate.z
+          );
+        }
+      }
+
+      if (
+        rightStartCoordinate.y > 0 &&
+        rightStartCoordinate.z == rectangleExtrudeLength()
+      ) {
+        if (z == rectangleExtrudeLength() && y == RectangleShapeHeight() / 2) {
+          positionAttribute.setXYZ(
+            i,
+            x,
+            rightStartCoordinate.y,
+            rightStartCoordinate.z
+          );
+        }
+      }
+    }
+  }
+
+  // Rectangle shape geometry
+  function RectangleShape(variableHeight) {
+    const shape = new THREE.Shape();
+    const height = RectangleShapeHeight();
+    const changeHeight = variableHeight;
+    const width = RectangularShapeWidth();
+    const offset = width / 20;
+    const origin = new THREE.Vector2(0, 0);
+
+    shape.moveTo(origin.x, origin.y);
+    shape.lineTo(origin.x, origin.y + changeHeight);
+    shape.lineTo(origin.x, origin.y + height);
+    shape.lineTo(origin.x + width, origin.y + height);
+    shape.lineTo(origin.x + width, origin.y + changeHeight);
+    shape.lineTo(origin.x + width, origin.y);
+    shape.lineTo(origin.x + 1, origin.y);
+    shape.lineTo(origin.x + 1, origin.y + offset);
+    shape.lineTo(origin.x + width - offset, origin.y + offset);
+    shape.lineTo(origin.x + width - offset, origin.y + changeHeight);
+    shape.lineTo(origin.x + width - offset, origin.y + height - offset);
+    shape.lineTo(origin.x + offset, origin.y + height - offset);
+    shape.lineTo(origin.x + offset, origin.y + changeHeight);
+    shape.lineTo(origin.x + offset, origin.y);
+
+    return shape;
+  }
+
+  HollowRectangleShape_Type3();
+}
+//#endregion
+
+//#region  Project 4:
+function fun4() {
+  camera.position.set(-20, 10, 30);
+
+  const shapeHeight = 10,
+    shapeWidth = 10;
+  const ambientLight = new THREE.AmbientLight(0xffffff, 3);
+  scene.add(ambientLight);
+
+  const loader = new THREE.TextureLoader();
+
+  function loadColorTexture(path) {
+    const texture = loader.load(path);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(1 / shapeWidth, 1 / shapeHeight);
+    texture.minFilter = THREE.LinearFilter;
+    return texture;
+  }
+
+  const materials = new THREE.MeshStandardMaterial({
+    map: loadColorTexture("./Texture/brick3.jpg"),
+    color: 0xffffff,
+    roughness: 1,
+    metalness: 0,
+  });
+
+  const extrudeSettings = {
+    depth: 10,
+  };
+  const shape = new THREE.Shape();
+  shape.moveTo(0, 0);
+  shape.lineTo(shapeWidth, 0);
+  shape.lineTo(shapeWidth, shapeHeight);
+  shape.lineTo(0, shapeHeight);
+
+  const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+  const mesh = new THREE.Mesh(geometry, materials);
+  scene.add(mesh);
+
+  animate(() => { });
+}
+//#endregion
+
+//#region  Project 5
+function fun5() {
+  camera.position.z = 100;
+  camera.position.y = 0;
+  const loader = new THREE.TextureLoader();
+
+  function loadColorTexture(path) {
+    const texture = loader.load(path);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return texture;
+  }
+
+  const materials = new THREE.MeshStandardMaterial({
+    map: loadColorTexture("./Texture/earth.jpg"),
+    color: 0xffffff,
+    roughness: 0.5,
+    metalness: 1.0,
+  });
+  // Lighting setup1
+  const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+  scene.add(ambientLight);
+
+  const lightDirections = [
+    [0, 0, 1],
+    [0, 1, 0],
+    [1, 0, 0],
+    [0, 0, -1],
+    [-1, 0, 0],
+    [0, -1, 0],
+  ];
+
+  lightDirections.forEach((dir) => {
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(...dir);
+    scene.add(light);
+  });
+
+  const geometry = new THREE.SphereGeometry(40);
+  const cube = new THREE.Mesh(geometry, materials);
+  scene.add(cube);
+
+  animate(() => { });
+}
+//#endregion
+
+//#region  Project 6:
 function fun6() {
   camera.position.set(0, 10, 10);
   const light1 = new THREE.SpotLight(0xffffff, 100);
@@ -177,302 +1075,9 @@ function fun6() {
 }
 //#endregion
 
-//#region  Project 3:
-function fun4() {
-  camera.position.set(0, 0, 150)
-  const loader = new THREE.TextureLoader();
-
-  function loadColorTexture(path) {
-    const texture = loader.load(path);
-    texture.colorSpace = THREE.SRGBColorSpace;
-
-    // Use trilinear filtering for smooth transitions
-    texture.minFilter = THREE.LinearMipmapLinearFilter;
-    texture.magFilter = THREE.LinearFilter;
-
-    return texture;
-  }
-
-  const materials =
-    new THREE.MeshPhysicalMaterial({
-      map: loadColorTexture("./Texture/brick3.jpg"),
-      color: 0xffffff,
-      roughness: 0.5,
-      metalness: 1.0,
-    });
-
-  // Lighting setup1
-  const ambientLight = new THREE.AmbientLight(0xffffff, 1);
-  scene.add(ambientLight);
-
-  const lightDirections = [
-    [0, 0, 1],
-    [0, 1, 0],
-    [1, 0, 0],
-    [0, 0, -1],
-    [-1, 0, 0],
-    [0, -1, 0],
-  ];
-
-  lightDirections.forEach((dir) => {
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(...dir);
-    scene.add(light);
-  });
-
-  const geometry = new THREE.BoxGeometry(70, 80, 40);
-  const cube = new THREE.Mesh(geometry, materials);
-  scene.add(cube);
-
-  animate(() => {
-
-  });
-}
-//#endregion
-
-//#region  Project 8
-function fun3() {
-  camera.position.set(-100, 0, -100)
-  const directional = new THREE.DirectionalLight(0xffffff, 3); // Soft white light
-  directional.position.set(0, 40, 0);
-  scene.add(directional);
-  const directional1 = new THREE.DirectionalLight(0xffffff, 1); // Soft white light
-  directional1.position.set(-40, 0, 0);
-  scene.add(directional1);
-
-  const ambientLight3 = new THREE.AmbientLight(0xffffff, 2);
-  scene.add(ambientLight3);
-
-  function RectangleShapeHeight() {
-    return 50;
-  }
-
-  // Width of Rectangular shape
-  function RectangularShapeWidth() {
-    return 30;
-  }
-
-  // Extrude Length of Rectangular shape
-  function rectangleExtrudeLength() {
-    return 300;
-  }
-
-  //#region Type - 3  Multiple slices
-
-  const leftLinePoints = [
-    new THREE.Vector3(0, 0, 0),  // left line start coordinate 
-    new THREE.Vector3(0, 50, 100),  // left line end coordinate 
-  ];
-
-  const rightLinePoints = [
-    new THREE.Vector3(0, 0, 200),   // right line start coordinate 
-    new THREE.Vector3(0, 51, 300),   // right line end coordinate 
-  ];
-
-  // Create a CatmullRomCurve3 curve
-  const leftCurve = new THREE.CatmullRomCurve3(leftLinePoints);
-  const rightCurve = new THREE.CatmullRomCurve3(rightLinePoints);
-
-  // Generate the Cut Line from the given Vertices
-  const leftCurvePoints = leftCurve.getPoints(100);
-  leftCurvePoints.forEach(v => {
-    // top edge for end point
-    if (Math.round(v.y) == RectangleShapeHeight() && v.z >= 0) {
-      leftLinePoints[1].y = RectangleShapeHeight();
-      leftLinePoints[1].z = v.z;
-    }
-    // left edge for end point
-    if (Math.round(v.z) == 0) {
-      leftLinePoints[1].y = v.y;
-      leftLinePoints[1].z = 0;
-    }
-  })
-  leftCurvePoints.forEach(v => {
-    // left edge for start point
-    if (Math.round(v.z) == 0 && leftLinePoints[1].y == RectangleShapeHeight()) {
-      leftLinePoints[0].y = v.y;
-      leftLinePoints[0].z = 0;
-    }
-    // down edge for start point
-    if (Math.round(v.y) == 0) {
-      leftLinePoints[0].y = 0;
-      leftLinePoints[0].z = v.z;
-    }
-  })
-
-  const rightCurvePoints = rightCurve.getPoints(100);
-  rightCurvePoints.forEach(v => {
-    // top edge for end point
-    if (Math.round(v.y) == RectangleShapeHeight() && v.z <= rectangleExtrudeLength()) {
-      rightLinePoints[1].y = RectangleShapeHeight();
-      rightLinePoints[1].z = v.z;
-    }
-    // right edge for end point
-    if (Math.round(v.z) == rectangleExtrudeLength()) {
-      rightLinePoints[1].y = v.y;
-      rightLinePoints[1].z = rectangleExtrudeLength();
-    }
-  })
-  rightCurvePoints.forEach(v => {
-    // right edge for start point
-    if (Math.round(v.z) == rectangleExtrudeLength() && rightLinePoints[1].y == RectangleShapeHeight()) {
-      // console.log(Math.round(v.x) , Math.round(v.y) , Math.round(v.z));
-      rightLinePoints[0].y = v.y;
-      rightLinePoints[0].z = rectangleExtrudeLength();
-    }
-    // down edge for start point
-    if (Math.round(v.y) == 0) {
-      // console.log(Math.round(v.x) , Math.round(v.y) , Math.round(v.z));
-      rightLinePoints[0].y = 0;
-      rightLinePoints[0].z = v.z;
-    }
-  })
-
-  const leftGeometry = new THREE.BufferGeometry().setFromPoints(leftCurvePoints);
-  const rightGeometry = new THREE.BufferGeometry().setFromPoints(rightCurvePoints);
-  // Create a material for the line
-  const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
-  // Create the line object
-  const rightLine = new THREE.Line(rightGeometry, material);
-  const leftLine = new THREE.Line(leftGeometry, material);
-
-  // Add the line to the scene
-  scene.add(leftLine);
-  scene.add(rightLine);
-  function HollowRectangleShape_Type3() {
-    const rectangleExtrudeShape = RectangleShape(RectangleShapeHeight() / 2);
-
-    // Extrude settings for rectangular shape 
-    const extrudeLength = rectangleExtrudeLength();
-    const extrudeSettings = {
-      depth: rectangleExtrudeLength(),
-      steps: 1,
-      bevelEnabled: false,
-    };
-
-    // rectangular Geometry , material and Mesh
-    const rectangleTopExtrude = new THREE.ExtrudeGeometry(rectangleExtrudeShape, extrudeSettings);
-    const rectangleTopMaterial = new THREE.MeshPhysicalMaterial({
-      color: "#a2afbd",
-      wireframe: false,
-    });
-    const rectangleTopMesh = new THREE.Mesh(rectangleTopExtrude, rectangleTopMaterial);
-    RectangularShapeCalculation(rectangleTopExtrude, extrudeLength);
-    scene.add(rectangleTopMesh);
-
-    animate(() => {
-
-    });
-
-  }
-  //#endregion
-
-  // Edge cutting calculation 
-  function RectangularShapeCalculation(geometry, extrudeLength) {
-    // console.log("Left Line cutting vertices ", leftLinePoints[0], leftLinePoints[1]);
-    // console.log("Right Line cutting vertices ", rightLinePoints[0], rightLinePoints[1]);
-    const positionAttribute = geometry.attributes.position;
-
-    const leftStartCoordinate = leftLinePoints[0];
-    const leftEndCoordinate = leftLinePoints[1];
-
-    const rightStartCoordinate = rightLinePoints[0];
-    const rightEndCoordinate = rightLinePoints[1];
-
-    for (let i = 0; i < positionAttribute.count; i++) {
-      const x = positionAttribute.getX(i);
-      const y = positionAttribute.getY(i);
-      const z = positionAttribute.getZ(i);
-
-      // LEFT LINE CUTTING 
-      if (leftStartCoordinate.y <= 0 && leftStartCoordinate.z >= 0 && leftStartCoordinate.z < rightStartCoordinate.z) {
-        if (z == 0 && (y == 0 || y == RectangularShapeWidth() / 20)) {
-          if (y == 0) positionAttribute.setXYZ(i, x, leftStartCoordinate.y, leftStartCoordinate.z);
-          if (y == RectangularShapeWidth() / 20) positionAttribute.setXYZ(i, x, leftStartCoordinate.y + RectangularShapeWidth() / 20, leftStartCoordinate.z + RectangularShapeWidth() / 20);
-        }
-      }
-      if (leftEndCoordinate.y > 0 && leftEndCoordinate.z >= 0) {
-        if (y == RectangleShapeHeight() / 2 && z == 0) {
-          positionAttribute.setXYZ(i, x, leftEndCoordinate.y, leftEndCoordinate.z);
-        }
-
-        if (leftEndCoordinate.z != 0) {
-          if (z == 0 && (y == RectangleShapeHeight() || y == RectangleShapeHeight() - RectangularShapeWidth() / 20)) {
-            if (y == RectangleShapeHeight()) positionAttribute.setXYZ(i, x, leftEndCoordinate.y, leftEndCoordinate.z);
-            if (y == RectangleShapeHeight() - RectangularShapeWidth() / 20) positionAttribute.setXYZ(i, x, leftEndCoordinate.y - RectangularShapeWidth() / 20, leftEndCoordinate.z + RectangularShapeWidth() / 20);
-
-          }
-        }
-      }
-      if (leftStartCoordinate.y > 0 && leftStartCoordinate.z == 0) {
-        if (y == RectangleShapeHeight() / 2 && z == 0) {
-          positionAttribute.setXYZ(i, x, leftStartCoordinate.y, leftStartCoordinate.z);
-        }
-      }
-
-
-      // RIGHT LINE CUTTING 
-
-      if (rightStartCoordinate.y <= 0 && rightStartCoordinate.z <= rectangleExtrudeLength() && rightStartCoordinate.z > leftStartCoordinate.z) {
-        if (z == rectangleExtrudeLength() && (y == 0 || y == RectangularShapeWidth() / 20)) {
-          positionAttribute.setXYZ(i, x, rightStartCoordinate.y, rightStartCoordinate.z);
-        }
-        if (z == rectangleExtrudeLength() && y == RectangleShapeHeight() / 2) {
-          positionAttribute.setXYZ(i, x, rightEndCoordinate.y, rightEndCoordinate.z);
-        }
-      }
-
-      if (rightEndCoordinate.y >= RectangleShapeHeight() && rightEndCoordinate.z <= rectangleExtrudeLength() && rightEndCoordinate.z > leftEndCoordinate.z) {
-        if (z == rectangleExtrudeLength() && (y == RectangleShapeHeight() || y == RectangleShapeHeight() - RectangularShapeWidth() / 20)) {
-          positionAttribute.setXYZ(i, x, rightEndCoordinate.y, rightEndCoordinate.z);
-        }
-      }
-
-      if (rightStartCoordinate.y > 0 && rightStartCoordinate.z == rectangleExtrudeLength()) {
-        if (z == rectangleExtrudeLength() && y == RectangleShapeHeight() / 2) {
-          positionAttribute.setXYZ(i, x, rightStartCoordinate.y, rightStartCoordinate.z);
-        }
-      }
-    }
-
-  }
-
-  // Rectangle shape geometry
-  function RectangleShape(variableHeight) {
-    const shape = new THREE.Shape();
-    const height = RectangleShapeHeight();
-    const changeHeight = variableHeight;
-    const width = RectangularShapeWidth();
-    const offset = width / 20;
-    const origin = new THREE.Vector2(0, 0);
-
-
-    shape.moveTo(origin.x, origin.y);
-    shape.lineTo(origin.x, origin.y + changeHeight);
-    shape.lineTo(origin.x, origin.y + height);
-    shape.lineTo(origin.x + width, origin.y + height);
-    shape.lineTo(origin.x + width, origin.y + changeHeight);
-    shape.lineTo(origin.x + width, origin.y);
-    shape.lineTo(origin.x + 1, origin.y);
-    shape.lineTo(origin.x + 1, origin.y + offset);
-    shape.lineTo(origin.x + width - offset, origin.y + offset);
-    shape.lineTo(origin.x + width - offset, origin.y + changeHeight);
-    shape.lineTo(origin.x + width - offset, origin.y + height - offset);
-    shape.lineTo(origin.x + offset, origin.y + height - offset);
-    shape.lineTo(origin.x + offset, origin.y + changeHeight);
-    shape.lineTo(origin.x + offset, origin.y);
-
-    return shape;
-  }
-
-  HollowRectangleShape_Type3();
-
-}
-//#endregion
-
-//#region  Project 12
+//#region  Project 7
 function fun7() {
-  camera.position.set(90, 80, 0)
+  camera.position.set(90, 80, 0);
   const directional = new THREE.DirectionalLight(0xffffff, 3); // Soft white light
   directional.position.set(0, 40, 0);
   scene.add(directional);
@@ -548,9 +1153,7 @@ function fun7() {
     triangleLock.rotateY(Math.PI / 2);
     mesh.add(triangleLock);
 
-    animate(() => {
-
-    });
+    animate(() => { });
   }
 
   function basepLateCurve() {
@@ -654,501 +1257,12 @@ function fun7() {
 }
 //#endregion
 
-//#region  Project 13
-function clicking() {
-  //#region Raycast
-  const raycaster = new THREE.Raycaster();
-  const mouse = new THREE.Vector2();
-  const polygonVertices = [];
-  const vectorAngles = [];
-  const vertexAngles = [];
-  const extrudeStartPoints = [];
-  const extrudeEndPoints = [];
-  const cuttingLines = [];
-  const extrudeDirectionsByEdge = [];
-  const extrusionHeight = 1;
-
-  const planeGeometry = new THREE.PlaneGeometry(500, 500);
-  const planeMaterial = new THREE.MeshBasicMaterial({
-    // visible: false,
-    color: "white",
-  });
-  const drawingPlane = new THREE.Mesh(planeGeometry, planeMaterial);
-  // drawingPlane.scale.set(0.1, 0.1, 0.1);
-  drawingPlane.position.set(0, 0, 5);
-  scene.add(drawingPlane);
-  //#endregion
-
-  function drawCircleAt(point) {
-    const circle = new THREE.Mesh(
-      new THREE.CircleGeometry(1),
-      new THREE.MeshBasicMaterial({ color: 0xff0000 })
-    );
-    circle.position.copy(point);
-    scene.add(circle);
-  }
-
-  function extrudeFaceBetween(startPoint, endPoint) {
-    const shape = new THREE.Shape();
-    const depth = 0;
-    const height = extrusionHeight;
-    shape.moveTo(0, 0);
-    shape.lineTo(depth, 0);
-    shape.lineTo(depth, height);
-    shape.lineTo(0, height);
-    shape.lineTo(0, 0);
-
-    const path = new THREE.LineCurve3(startPoint, endPoint);
-    const extrudeSettings = {
-      steps: 1,
-      bevelEnabled: false,
-      extrudePath: path,
-    };
-
-    const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-    const material = new THREE.MeshBasicMaterial({
-      color: 0x00ff00,
-      wireframe: false,
-    });
-    const mesh = new THREE.Mesh(geometry, material);
-
-    const direction = new THREE.Vector3().subVectors(endPoint, startPoint);
-    let dominantAxis;
-    if (Math.abs(direction.x) > Math.abs(direction.y)) {
-      dominantAxis = direction.x > 0 ? "x" : "-x";
-    } else if (Math.abs(direction.y) > Math.abs(direction.x)) {
-      dominantAxis = direction.y > 0 ? "y" : "-y";
-    }
-
-    extrudeDirectionsByEdge.push(dominantAxis);
-
-    const positionAttribute = geometry.attributes.position;
-    const uniqueVerticesSet = new Set();
-    const uniqueVertices = [];
-    for (let i = 0; i < positionAttribute.count; i++) {
-      const x = positionAttribute.getX(i);
-      const y = positionAttribute.getY(i);
-      const z = positionAttribute.getZ(i);
-      const vertex = JSON.stringify([x, y, z]);
-      if (!uniqueVerticesSet.has(vertex)) {
-        uniqueVerticesSet.add(vertex);
-        uniqueVertices.push([x, y, z]);
-      }
-    }
-
-    extrudeStartPoints.push(uniqueVertices[2]);
-    extrudeEndPoints.push(uniqueVertices[0]);
-
-    scene.add(mesh);
-  }
-
-  function calculateAngles() {
-    if (polygonVertices.length < 3) return;
-    for (let i = 1; i < polygonVertices.length; i++) {
-      if (i == polygonVertices.length - 1) {
-        polygonVertices[0] = polygonVertices[1];
-      }
-      const prevVertex =
-        polygonVertices[
-        (i - 1 + polygonVertices.length) % polygonVertices.length
-        ];
-      const currentVertex = polygonVertices[i];
-      const nextVertex = polygonVertices[(i + 1) % polygonVertices.length];
-
-      // This is the point where the angle is calculated using th side of the rectangle shape
-      const pointLeft = new THREE.Vector3(...extrudeStartPoints[i - 1]);
-      const commonPoint = new THREE.Vector3(...polygonVertices[i]);
-      const pointRight = new THREE.Vector3(
-        ...extrudeEndPoints[i % extrudeEndPoints.length]
-      );
-      // drawCircleAt(pointLeft);
-      // drawCircleAt(pointRight);
-      // drawCircleAt(commonPoint);
-      const vectorAvertexAngle = new THREE.Vector3().subVectors(
-        pointLeft,
-        commonPoint
-      );
-      const vectorBvertexAngle = new THREE.Vector3().subVectors(
-        pointRight,
-        commonPoint
-      );
-      const vertexAngle = vectorAvertexAngle.angleTo(vectorBvertexAngle);
-      vertexAngles.push(vertexAngle);
-      // Ends here
-
-      const vectorA = new THREE.Vector3().subVectors(prevVertex, currentVertex);
-      const vectorB = new THREE.Vector3().subVectors(nextVertex, currentVertex);
-      const angle = vectorA.angleTo(vectorB);
-      vectorAngles.push(angle);
-      console.log(prevVertex, currentVertex, nextVertex);
-
-      const canvas = document.createElement("canvas");
-      canvas.width = 128;
-      canvas.height = 64;
-      const context = canvas.getContext("2d");
-      context.fillStyle = "rgb(255, 255, 255)";
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      context.font = "24px Arial";
-      context.fillStyle = "white";
-      context.textAlign = "center";
-      context.fillText(
-        (vertexAngle * (180 / Math.PI)).toFixed(1) + "°",
-        canvas.width / 2,
-        canvas.height / 2 + 8
-      );
-
-      const texture = new THREE.CanvasTexture(canvas);
-      const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
-      const sprite = new THREE.Sprite(spriteMaterial);
-      sprite.position.copy(currentVertex);
-      sprite.scale.set(0.5, 0.25, 1);
-      sprite.userData.isAngleLabel = true;
-      // scene.add(sprite);
-
-      const bisector = new THREE.Vector3().addVectors(vectorA.normalize(), vectorB.normalize()).normalize();
-
-      const arrowLength = extrusionHeight * 1.2;
-      const arrowColor = 0xffffff;
-      const arrowEnd = new THREE.Vector3().addVectors(
-        currentVertex,
-        bisector.multiplyScalar(arrowLength)
-      );
-      cuttingLines.push(arrowEnd);
-      const arrowLineGeometry = new THREE.BufferGeometry().setFromPoints([
-        currentVertex,
-        arrowEnd,
-      ]);
-      const arrowLineMaterial = new THREE.LineBasicMaterial({
-        color: arrowColor,
-      });
-      const arrowLine = new THREE.Line(arrowLineGeometry, arrowLineMaterial);
-      scene.add(arrowLine);
-    }
-  }
-
-  function findExtrudePath() {
-    for (let i = 0; i < polygonVertices.length - 1; i++) {
-      extrudeFaceBetween(polygonVertices[i], polygonVertices[i + 1]);
-    }
-  }
-
-  function stepFinal() {
-    vectorAngles.forEach((angle) => {
-      console.log(angle * (180 / Math.PI));
-    });
-    vertexAngles.forEach((angle) => {
-      console.log(angle * (180 / Math.PI));
-    });
-
-    let faceIndex = 0;
-    scene.traverse((child) => {
-      if (child.isMesh && child.geometry instanceof THREE.ExtrudeGeometry) {
-        const geometry = child.geometry;
-        const positionAttribute = geometry.attributes.position;
-        for (let i = 0; i < positionAttribute.count; i++) {
-          const x = positionAttribute.getX(i);
-          const y = positionAttribute.getY(i);
-          const z = positionAttribute.getZ(i);
-
-          const start = extrudeStartPoints[faceIndex];
-          const end = extrudeEndPoints[faceIndex];
-          if (x === start[0] && y === start[1] && z === start[2]) {
-            positionAttribute.setXYZ(i, cuttingLines[faceIndex].x, cuttingLines[faceIndex].y, z);
-          }
-
-          if (x === end[0] && y === end[1] && z === end[2]) {
-            positionAttribute.setXYZ(i, cuttingLines[(cuttingLines.length - 1 + faceIndex) % cuttingLines.length].x, cuttingLines[(cuttingLines.length - 1 + faceIndex) % cuttingLines.length].y, z);
-          }
-        }
-        faceIndex++;
-      }
-    });
-
-    // console.log(extrudeStartPoints);
-  }
-
-  function onClick(event) {
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-    raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObject(drawingPlane);
-    if (intersects.length > 0) {
-      const clickedPoint = intersects[0].point;
-      polygonVertices.push(clickedPoint);
-      console.log(clickedPoint);
-
-
-      const isClosed =
-        polygonVertices.length > 1 &&
-        parseFloat(clickedPoint.x.toFixed(0)) ===
-        parseFloat(polygonVertices[0].x.toFixed(0)) &&
-        parseFloat(clickedPoint.y.toFixed(0)) ===
-        parseFloat(polygonVertices[0].y.toFixed(0)) &&
-        parseFloat(clickedPoint.z.toFixed(0)) ===
-        parseFloat(polygonVertices[0].z.toFixed(0));
-
-      if (isClosed) {
-        console.log("Got the starting point");
-        polygonVertices[polygonVertices.length - 1] = polygonVertices[0];
-        findExtrudePath();
-        calculateAngles();
-        stepFinal();
-      }
-
-      drawCircleAt(clickedPoint);
-    }
-
-    animate(() => {
-    });
-  }
-  window.addEventListener("click", onClick, false);
-}
-//#endregion
-
-//#region  Project
-function fun5() {
-  camera.position.z = 100
-  camera.position.y = 0
-  const loader = new THREE.TextureLoader();
-
-  function loadColorTexture(path) {
-    const texture = loader.load(path);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    return texture;
-  }
-
-  const materials = new THREE.MeshStandardMaterial({
-    map: loadColorTexture("./Texture/earth.jpg"),
-    color: 0xffffff,
-    roughness: 0.5,
-    metalness: 1.0,
-  })
-    ;
-
-  // Lighting setup1
-  const ambientLight = new THREE.AmbientLight(0xffffff, 1);
-  scene.add(ambientLight);
-
-  const lightDirections = [
-    [0, 0, 1],
-    [0, 1, 0],
-    [1, 0, 0],
-    [0, 0, -1],
-    [-1, 0, 0],
-    [0, -1, 0],
-  ];
-
-  lightDirections.forEach((dir) => {
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(...dir);
-    scene.add(light);
-  });
-
-  const geometry = new THREE.SphereGeometry(40);
-  const cube = new THREE.Mesh(geometry, materials);
-  scene.add(cube);
-
-  animate(() => {
-
-  });
-}
-//#endregion
-
-//#region Function 20 (diagonal + side )
-function fun2() {
-  camera.position.set(0 , 0 ,700)
-  const origin = new THREE.Vector2(0, 0);
-  let doorHeight = 200,
-    doorWidth = 300,
-    holeDiameter = 50,
-    handleHeight = 50,
-    handleWidth = 100;
-
-  // Handle height calculation
-  if (handleHeight < 20) {
-    handleHeight = 20;
-  }
-  if (handleHeight > doorHeight) {
-    handleHeight = doorHeight;
-  }
-  if (holeDiameter + 20 > handleHeight) {
-    holeDiameter = handleHeight - 20;
-  }
-  doorHeight = Math.max(doorHeight, 2 * holeDiameter + 40);
-  // Extrusion
-  const shapeDeep = 10;
-  const extrudeSetting = {
-    depth: shapeDeep,
-  };
-
-  // Door formation
-  const doorShape = new THREE.Shape();
-  doorShape.moveTo(origin.x + 10, origin.y);
-  doorShape.lineTo(origin.x + doorWidth - 10, origin.y);
-  doorShape.quadraticCurveTo(
-    origin.x + doorWidth,
-    origin.y,
-    origin.x + doorWidth,
-    origin.y + 10
-  );
-  doorShape.lineTo(origin.x + doorWidth, origin.y + doorHeight - 10);
-  doorShape.quadraticCurveTo(
-    origin.x + doorWidth,
-    origin.y + doorHeight,
-    origin.x + doorWidth - 10,
-    origin.y + doorHeight
-  );
-  doorShape.lineTo(origin.x + 10, origin.y + doorHeight);
-  doorShape.quadraticCurveTo(
-    origin.x,
-    origin.y + doorHeight,
-    origin.x,
-    origin.y + doorHeight - 10
-  );
-  doorShape.lineTo(origin.x, origin.y + 10);
-  doorShape.quadraticCurveTo(origin.x, origin.y, origin.x + 10, origin.y);
-
-  const doorHoles = [
-    { x: origin.x + holeDiameter, y: origin.y + doorHeight - holeDiameter },
-    // { x: origin.x + holeDiameter / 2 + 5, y: origin.y + doorHeight / 2 },
-    {
-      x: origin.x - holeDiameter / 2 - 5 + doorWidth,
-      y: origin.y + doorHeight / 2,
-    },
-    { x: origin.x + doorWidth / 2, y: origin.y + holeDiameter - 10 },
-    //     { x: origin.x + doorWidth / 2, y: origin.y + doorHeight - holeDiameter + 10 },
-  ];
-  doorHoles.forEach((hole) => {
-    const doorHole = new THREE.Path();
-    doorHole.absarc(hole.x, hole.y, holeDiameter / 2, 0, Math.PI * 2, true);
-    doorShape.holes.push(doorHole);
-  });
-
-  // Door Extrusion
-  const door = new THREE.ExtrudeGeometry(doorShape, extrudeSetting);
-  const doormat = new THREE.MeshBasicMaterial({
-    color: 0x00ff00,
-    wireframe: false,
-  });
-  const doorMesh = new THREE.Mesh(door, doormat);
-  scene.add(doorMesh);
-
-  // handle Formaton
-  let handle = new THREE.Shape();
-  // handle.moveTo(origin.x , origin.y)
-  handle.lineTo(handleHeight / 2 - 5, 0);
-  handle.quadraticCurveTo(handleHeight / 2, 0, handleHeight / 2, 5);
-  handle.lineTo(handleHeight / 2, handleWidth - 5);
-  handle.quadraticCurveTo(
-    handleHeight / 2,
-    handleWidth,
-    handleHeight / 2 - 5,
-    handleWidth
-  );
-  handle.lineTo(-handleHeight / 2 + 5, handleWidth);
-  handle.quadraticCurveTo(
-    -handleHeight / 2,
-    handleWidth,
-    -handleHeight / 2,
-    handleWidth - 5
-  );
-  handle.lineTo(-handleHeight / 2, 5);
-  handle.quadraticCurveTo(-handleHeight / 2, 0, -handleHeight / 2 + 5, 0);
-
-  // Handle Hole
-  const HandleHole = new THREE.Path();
-  // HandleHole.absarc(0, 0 + holeDiameter / 2, holeDiameter / 2, 0, Math.PI * 2, true);
-  HandleHole.absarc(
-    0,
-    holeDiameter / 2 + 5,
-    holeDiameter / 2,
-    0,
-    Math.PI * 2,
-    true
-  );
-  handle.holes.push(HandleHole);
-
-  //  Diagonal Handle
-  const handles = new THREE.ExtrudeGeometry(handle, { depth: 20 });
-  const handleMesh = new THREE.MeshBasicMaterial({
-    color: 0x00ff00ff,
-    wireframe: false,
-    side: THREE.DoubleSide,
-  });
-  const handlesrMesh = new THREE.Mesh(handles, handleMesh);
-  handlesrMesh.position.set(
-    origin.x + holeDiameter + 14,
-    origin.y + doorHeight - holeDiameter - 14,
-    shapeDeep
-  );
-  handlesrMesh.rotateZ(Math.PI / 4);
-  scene.add(handlesrMesh);
-
-  // clone Handle
-
-  //  Handle DOWN
-  const handleDown = handles.clone();
-  const handleDownMat = new THREE.MeshBasicMaterial({
-    color: 0x0000ff,
-    wireframe: false,
-    side: THREE.DoubleSide,
-  });
-  const handleDownMatMesh = new THREE.Mesh(handleDown, handleDownMat);
-  handleDownMatMesh.position.set(
-    origin.x + doorWidth / 2,
-    origin.y + holeDiameter + 10,
-    shapeDeep * 2
-  );
-  handleDown.rotateX(Math.PI);
-  scene.add(handleDownMatMesh);
-
-  // Handle RIGHT
-  const handleRight = handles.clone();
-  const handleRightMat = new THREE.MeshBasicMaterial({
-    color: 0xff0000,
-    wireframe: false,
-    side: THREE.DoubleSide,
-  });
-  const handleRightMatMesh = new THREE.Mesh(handleRight, handleRightMat);
-  handleRightMatMesh.position.set(
-    origin.x + doorWidth - holeDiameter - 10,
-    origin.y + doorHeight / 2,
-    shapeDeep
-  );
-  handleRightMatMesh.rotateZ(-Math.PI / 2);
-  scene.add(handleRightMatMesh);
-
-  // Edge line for handle geometry
-  const handleEdgeo = new THREE.EdgesGeometry(handles);
-  const handleEdmat = new THREE.LineBasicMaterial({ color: "white" });
-  const handleEdges = new THREE.LineSegments(handleEdgeo, handleEdmat);
-  handlesrMesh.add(handleEdges);
-
-  // Edge line for Door geometry
-  const doorEdgeo = new THREE.EdgesGeometry(door);
-  const doorEdmat = new THREE.LineBasicMaterial({ color: "white" });
-  const doorEdges = new THREE.LineSegments(doorEdgeo, doorEdmat);
-  scene.add(doorEdges);
-
-  const ch = new THREE.SphereGeometry(5);
-  const chmat = new THREE.MeshBasicMaterial({ color: "red", wireframe: false });
-  const chmesh = new THREE.Mesh(ch, chmat);
-  chmesh.position.set(handleHeight / 2, doorHeight - holeDiameter);
-  // scene.add(chmesh)
-
-  animate(() => {
-
-  });
-}
-//#endregion
-
-//#region Function (21) (Handle)
+//#region Function 8
 const turnRight = false;
 
 //#region Function - 1  Lock Base
 function fun8() {
-  camera.position.z = 80
+  camera.position.z = 80;
   const directionalTop = new THREE.DirectionalLight(0xffffff, 1);
   directionalTop.position.set(0, 50, 0);
   scene.add(directionalTop);
@@ -1269,9 +1383,7 @@ function fun8() {
   // Add lock component
   const lock = fun21C();
   mesh.add(lock);
-  animate(() => {
-
-  });
+  animate(() => { });
 }
 //#endregion
 
@@ -1508,7 +1620,7 @@ function fun21C() {
 
 //#endregion
 
-//#region Handle (fun 25 ) (Patio handle)
+//#region Handle (fun 9 ) (Patio handle)
 let turnLeft = true;
 let height = 400;
 let width = 100;
@@ -1520,7 +1632,7 @@ let cylinderWidth = width / 4;
 
 //#region Hnadle Base
 function fun9() {
-  camera.position.z = 900
+  camera.position.z = 900;
   const directionalTop = new THREE.DirectionalLight(0xffffff, 1);
   directionalTop.position.set(0, 50, 0);
   scene.add(directionalTop);
@@ -1717,9 +1829,7 @@ function fun9() {
   Patio_handle_clone.position.set(200, 0, 0);
   scene.add(Patio_handle_clone);
 
-  animate(() => {
-
-  });
+  animate(() => { });
 }
 //#endregion
 
@@ -1887,7 +1997,7 @@ function fun25C() {
 
 //#endregion
 
-//#region Handle (fun 31 ) (Lift and slide handle)
+//#region Handle (fun 10) (Lift and slide handle)
 
 function getBackPlateHeight() {
   return 600;
@@ -1930,12 +2040,11 @@ let curveHandleHeight = 70;
 let curve_Width = 200;
 const handleBaseExtrude = 50;
 
-//#region HANDLE BASE PLATE function 31
 
 //#region Main function
 function fun10() {
-  camera.position.z = 1000
-  camera.position.y = -1200
+  camera.position.z = 1000;
+  camera.position.y = -1200;
   const directionalTop = new THREE.DirectionalLight(0xffffff, 1);
   directionalTop.position.set(0, 50, 0);
   scene.add(directionalTop);
@@ -2220,9 +2329,7 @@ function fun10() {
   );
   rightBackPlate.add(crossHole4);
 
-  animate(() => {
-
-  });
+  animate(() => { });
 }
 //#endregion
 
@@ -2363,15 +2470,14 @@ function fun31C() {
 }
 //#endregion
 
-//#endregion
 
 //#endregion
 
-//#region Texture Mapping Fun41
+//#region Texture Mapping Fun11
 
 function fun11() {
-  camera.position.z = 100
-  camera.position.y = 0
+  camera.position.z = 100;
+  camera.position.y = 0;
   const loader = new THREE.TextureLoader();
 
   function loadColorTexture(path) {
@@ -2456,14 +2562,12 @@ function fun11() {
     }
   });
 
-  animate(() => {
-
-  });
+  animate(() => { });
 }
 
 //#endregion
 
-// Start the app when DOM is loaded
+//#region  Start the app when DOM is loaded
 window.addEventListener("DOMContentLoaded", allEventListenerHandles);
 
 window.addEventListener("resize", () => {
@@ -2471,3 +2575,4 @@ window.addEventListener("resize", () => {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
+//#endregion

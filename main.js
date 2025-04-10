@@ -2,6 +2,9 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { CSG } from "three-csg-ts";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
+
 let scene, renderer, camera, controls, animationId;
 const canvas = document.getElementById("three-canvas");
 renderer = new THREE.WebGLRenderer({ canvas });
@@ -19,7 +22,7 @@ controls.enableDamping = true;
 
 // List of all the Event Listerner
 function allEventListenerHandles() {
-  loadProject(fun10)
+  loadProject(home);
   document
     .getElementById("btn1")
     .addEventListener("click", () => loadProject(fun1));
@@ -85,6 +88,29 @@ function animate(updateFn) {
 //#endregion
 
 // Project Functions Start Here
+
+function home() {
+  camera.position.set(0 , 8 , 5)
+  const loader = new GLTFLoader();
+  const dracoLoader = new DRACOLoader();
+  dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/'); // CDN path for decoder
+  loader.setDRACOLoader(dracoLoader);
+  loader.load(
+    './Model/forest_house.glb', // path to your GLB file
+    function (gltf) {
+      console.log(gltf.scene);
+      
+      scene.add(gltf.scene);
+
+    },
+    undefined,
+    function (error) {
+      console.error('Error loading GLB:', error);
+    }
+  );
+  animate(() => { });
+
+}
 
 //#region  Project clicking
 function fun1() {
@@ -356,8 +382,7 @@ function fun1() {
           parseFloat(clickedPoint.z.toFixed(0)) ===
           parseFloat(polygonVertices[0].z.toFixed(0));
 
-          console.log(isClosed);
-          
+        console.log(isClosed);
 
         if (isClosed) {
           isToStop = true;
@@ -380,8 +405,6 @@ function fun1() {
   }
 
   setTimeout(ch, 100);
-
-
 }
 //#endregion
 
@@ -1714,7 +1737,7 @@ function fun9() {
     bevelEnabled: false,
   });
   const geoMat = new THREE.MeshPhysicalMaterial({
-    color: "#e4e6e8",
+    color: "#ccffff",
     wireframe: false,
   });
   const mesh = new THREE.Mesh(geo, geoMat);
@@ -1726,7 +1749,7 @@ function fun9() {
     geoMat
   );
   cloneMesh.position.set(0, 0, -1);
-  mesh.add(cloneMesh);
+  // mesh.add(cloneMesh);
   mesh.add(frontEdges_key);
 
   const contour = path.getPoints(50);
@@ -1742,7 +1765,7 @@ function fun9() {
   // handle strted here
   // cylinder 1 and cylinder 2
   const material = new THREE.MeshPhysicalMaterial({
-    color: "#e4e6e8",
+    color: "#00e6e6",
     wireframe: false,
   });
 
@@ -1772,7 +1795,7 @@ function fun9() {
 
   // Curve 1 and curve 2
   const torusMaterial = new THREE.MeshPhysicalMaterial({
-    color: "#e4e6e8",
+    color: "#00e6e6",
     wireframe: false,
     side: THREE.DoubleSide,
   });
@@ -1838,7 +1861,7 @@ function fun9() {
 function fun25A() {
   let CylinderHeight = height - cylinderWidth;
   const material = new THREE.MeshPhysicalMaterial({
-    color: "#e4e6e8",
+    color: "#00e6e6",
     wireframe: false,
   });
   const geometry1 = new THREE.CylinderGeometry(
@@ -1858,7 +1881,7 @@ function fun25A() {
 
   // Torous 3 and torous 4
   const torusMaterial = new THREE.MeshPhysicalMaterial({
-    color: "#e4e6e8",
+    color: "#00e6e6",
     wireframe: false,
     side: THREE.DoubleSide,
   });
@@ -1919,7 +1942,7 @@ function fun25B() {
     bevelEnabled: false,
   });
   const geoMat = new THREE.MeshPhysicalMaterial({
-    color: "#e4e6e8",
+    color: "#ccffff",
     wireframe: false,
   });
   const mesh = new THREE.Mesh(geo, geoMat);
@@ -1945,7 +1968,7 @@ function fun25B() {
 function fun25C() {
   let CylinderHeight = height - cylinderWidth;
   const material = new THREE.MeshPhysicalMaterial({
-    color: "#e4e6e8",
+    color: "#00e6e6",
     wireframe: false,
   });
   const geometry1 = new THREE.CylinderGeometry(
@@ -1964,7 +1987,7 @@ function fun25C() {
 
   // Torous 3 and torous 4
   const torusMaterial = new THREE.MeshPhysicalMaterial({
-    color: "#e4e6e8",
+    color: "#00e6e6",
     wireframe: false,
     side: THREE.DoubleSide,
   });
@@ -2040,7 +2063,6 @@ function getKeyPosition() {
 let curveHandleHeight = 70;
 let curve_Width = 200;
 const handleBaseExtrude = 50;
-
 
 //#region Main function
 function fun10() {
@@ -2470,7 +2492,6 @@ function fun31C() {
   return boltPlate;
 }
 //#endregion
-
 
 //#endregion
 

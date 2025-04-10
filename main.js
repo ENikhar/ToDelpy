@@ -19,6 +19,7 @@ controls.enableDamping = true;
 
 // List of all the Event Listerner
 function allEventListenerHandles() {
+  loadProject(fun10)
   document
     .getElementById("btn1")
     .addEventListener("click", () => loadProject(fun1));
@@ -471,7 +472,7 @@ function fun2() {
 
   // Door Extrusion
   const door = new THREE.ExtrudeGeometry(doorShape, extrudeSetting);
-  const doormat = new THREE.MeshPhysicalMaterial({ color: "#e4e6e8" });
+  const doormat = new THREE.MeshPhysicalMaterial({ color: "#f4d79b" });
   const doorMesh = new THREE.Mesh(door, doormat);
   scene.add(doorMesh);
 
@@ -512,7 +513,7 @@ function fun2() {
 
   //  Diagonal Handle
   const handles = new THREE.ExtrudeGeometry(handle, { depth: 20 });
-  const handleMesh = new THREE.MeshPhysicalMaterial({ color: "#e4e6e8" });
+  const handleMesh = new THREE.MeshPhysicalMaterial({ color: "#abdbe3" });
   const handlesrMeshDiagonal = new THREE.Mesh(handles, handleMesh);
   handlesrMeshDiagonal.position.set(
     origin.x + holeDiameter + 14,
@@ -527,7 +528,7 @@ function fun2() {
   //  Handle DOWN
   const handleDown = handles.clone();
   const handleDownMat = new THREE.MeshPhysicalMaterial({ color: "#e4e6e8" });
-  const handleDownMatMesh = new THREE.Mesh(handleDown, handleDownMat);
+  const handleDownMatMesh = new THREE.Mesh(handleDown, handleMesh);
   handleDownMatMesh.position.set(
     origin.x + doorWidth / 2,
     origin.y + holeDiameter + 10,
@@ -539,7 +540,7 @@ function fun2() {
   // Handle RIGHT
   const handleRight = handles.clone();
   const handleRightMat = new THREE.MeshPhysicalMaterial({ color: "#e4e6e8" });
-  const handleRightMatMesh = new THREE.Mesh(handleRight, handleRightMat);
+  const handleRightMatMesh = new THREE.Mesh(handleRight, handleMesh);
   handleRightMatMesh.position.set(
     origin.x + doorWidth - holeDiameter - 10,
     origin.y + doorHeight / 2,
@@ -1133,7 +1134,7 @@ function fun7() {
 
     const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
     const material = new THREE.MeshPhysicalMaterial({
-      color: "#e4e6e8",
+      color: "#e28743",
       wireframe: false,
     });
     const mesh = new THREE.Mesh(geometry, material);
@@ -1175,7 +1176,7 @@ function fun7() {
 
     const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
     const material = new THREE.MeshPhysicalMaterial({
-      color: "#e4e6e8",
+      color: "#eab676",
       wireframe: false,
     });
     const mesh = new THREE.Mesh(geometry, material);
@@ -1198,7 +1199,7 @@ function fun7() {
 
     const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
     const material = new THREE.MeshPhysicalMaterial({
-      color: "#e4e6e8",
+      color: "#e9602c",
       wireframe: false,
     });
     const mesh = new THREE.Mesh(geometry, material);
@@ -1240,7 +1241,7 @@ function fun7() {
 
     const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
     const material = new THREE.MeshPhysicalMaterial({
-      color: "#e4e6e8",
+      color: "#e9602c",
       wireframe: false,
     });
     const mesh = new THREE.Mesh(geometry, material);
@@ -1309,7 +1310,7 @@ function fun8() {
   const LockExtrude = 5;
   const extrudeSettings = { depth: LockExtrude, bevelEnabled: false };
   const geo = new THREE.ExtrudeGeometry(path, extrudeSettings);
-  const geoMat = new THREE.MeshPhysicalMaterial({ color: "#e4e6e8" });
+  const geoMat = new THREE.MeshPhysicalMaterial({ color: "#e69500" });
   const mesh = new THREE.Mesh(geo, geoMat);
   mesh.position.set(x_handle_Position, y_handle_Position, z_handle_Position);
   scene.add(mesh);
@@ -1402,7 +1403,7 @@ function fun21A() {
   const extrudeSettings = { depth: 2, bevelEnabled: false };
   const geo = new THREE.ExtrudeGeometry(path, extrudeSettings);
   const geoMat = new THREE.MeshPhysicalMaterial({
-    color: "#f2f3f4",
+    color: "#e6c300",
     wireframe: false,
   });
   const mesh = new THREE.Mesh(geo, geoMat);
@@ -1480,7 +1481,7 @@ function fun21B() {
   const extrudeSettings = { depth: 5.3, bevelEnabled: false };
   const geo = new THREE.ExtrudeGeometry(path, extrudeSettings);
   const geoMat = new THREE.MeshPhysicalMaterial({
-    color: "#ffffff",
+    color: "#e6c300",
     wireframe: false,
     roughness: 100,
     metalness: 0,
@@ -1570,7 +1571,7 @@ function fun21C() {
   };
   const geo = new THREE.ExtrudeGeometry(path, extrudeSettings);
   const geoMat = new THREE.MeshPhysicalMaterial({
-    color: "#f2f3f4",
+    color: "#e6c300",
     wireframe: false,
   });
   const mesh = new THREE.Mesh(geo, geoMat);
@@ -1585,7 +1586,7 @@ function fun21C() {
     Math.PI
   );
   const matSphere = new THREE.MeshPhysicalMaterial({
-    color: "#f2f3f4",
+    color: "#ffff00",
     wireframe: false,
   });
   const sphereMesh = new THREE.Mesh(hemisphereGeometry, matSphere);
@@ -2155,7 +2156,7 @@ function fun10() {
     bevelEnabled: false,
   });
   const geo2Mat = new THREE.MeshPhysicalMaterial({
-    color: "#e4e6e8",
+    color: "#ffb06b",
     wireframe: false,
   });
   const backPlate2 = new THREE.Mesh(geo2, geo2Mat);
@@ -2166,7 +2167,7 @@ function fun10() {
     bevelEnabled: false,
   });
   const geoMat = new THREE.MeshPhysicalMaterial({
-    color: "#e4e6e8",
+    color: "#ffb06b",
     wireframe: false,
   });
   const backPlate = new THREE.Mesh(geo, geoMat);
@@ -2207,7 +2208,7 @@ function fun10() {
     32
   );
   const material = new THREE.MeshPhysicalMaterial({
-    color: "#e4e6e8",
+    color: "#cc8500",
     wireframe: false,
   });
   const frustumCylinderBaseMesh = new THREE.Mesh(frustumCylinderBase, material);
@@ -2356,7 +2357,7 @@ function fun31A() {
     bevelEnabled: false,
   });
   const LS_HandleMaterial = new THREE.MeshPhysicalMaterial({
-    color: "#e4e6e8",
+    color: "#ffedcc",
     wireframe: false,
   });
   const LSHandleMesh = new THREE.Mesh(LS_Handlegeometry, LS_HandleMaterial);
@@ -2412,7 +2413,7 @@ function fun31B() {
     bevelEnabled: false,
   });
   const geoMat = new THREE.MeshPhysicalMaterial({
-    color: "#e4e6e8",
+    color: "#ffedcc",
     wireframe: false,
     wireframe: false,
   });
@@ -2461,7 +2462,7 @@ function fun31C() {
     bevelEnabled: false,
   });
   const boltMat = new THREE.MeshPhysicalMaterial({
-    color: "#e4e6q9",
+    color: "#ffedcc",
     wireframe: false,
   });
   const boltPlate = new THREE.Mesh(bolt, boltMat);
